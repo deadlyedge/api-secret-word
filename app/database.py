@@ -13,7 +13,7 @@ class SecretEntry(Model):
     words = fields.TextField()
     useImage = fields.BooleanField(default=False)
     phrase_code = fields.CharField(max_length=255, null=True)
-    image_code = fields.JSONField()  # Store serialized descriptors as JSON
+    image_code = fields.JSONField(null=True)  # Store serialized descriptors as JSON, allow null
     timestamp = fields.DatetimeField(auto_now_add=True)
 
     class Meta:
