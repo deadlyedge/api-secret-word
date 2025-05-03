@@ -1,0 +1,42 @@
+import numpy as np
+import cv2
+from urllib.request import urlopen
+from app.config import SAMPLE_POINTS, MATCH_POINT
+
+
+def get_image_code(image_file_code: bytes) -> tuple:
+    """
+    Use OpenCV ORB model to detect and compute the image code.
+    """
+    img_array = np.frombuffer(image_file_code, np.uint8)
+    image_gray = cv2.imdecode(img_array, cv2.IMREAD_GRAYSCALE)
+    orb = cv2.ORB.create(nfeatures=SAMPLE_POINTS)
+    if image_gray is None:
+        return None, None
+    mask = np.zeros(image_gray.shape, dtype=np.uint8)
+    keypoints, descriptors = orb.detectAndCompute(image_gray, mask)
+    return keypoints, descriptors
+
+
+def match_with_db(code1: np.ndarray, code2: np.ndarray) -> bool:
+    """
+    Use NORM_HAMMING function to match the two images, calculate the distance of vectors
+    from them, and if the match points stay in a close distance, thinking they are similar.
+    :param code1: np.ndarray
+    :param code2: np.ndarray
+    :return: bool
+    """
+    bf = cv2.BFMatcher(cv2.NORM_HAMMING)
+    try:
+        matches = bf.knnMatch(code1, code2, k=2)
+    except cv2.error:
+        return False
+    try:
+        good_match = [m for (m, n) in matches if m.distance < 0.8 * n.distance]
+    except ValueError:
+        return False
+    if len(matches) == 0:
+        return False
+    similarity = len(good_match) / len(matches)
+    # print(f"Similarity: {similarity}")
+    return similarity > MATCH_POINT
