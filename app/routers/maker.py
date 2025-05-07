@@ -1,63 +1,77 @@
-from fastapi import APIRouter, Request, HTTPException
+from fastapi import APIRouter, HTTPException
 from starlette.responses import JSONResponse
 from urllib.request import urlopen
+from pydantic import BaseModel
+from typing import Optional, List
 from app.services.image_service import get_image_code
 from app.services.db_service import (
     write_db,
     find_one_by_pass,
 )
 from tortoise.exceptions import IntegrityError
+from pydantic import ValidationError, model_validator
 
 router = APIRouter()
 
 
+class MakerRequest(BaseModel):
+    words: str
+    pass_code: str
+    picture_base64: Optional[str] = None
+    phrase_code: Optional[str] = None
+    image_code: Optional[List[int]] = None
+
+    @model_validator(mode="before")
+    def check_exclusive_fields(cls, values):
+        picture_base64, phrase_code, image_code = (
+            values.get("picture_base64"),
+            values.get("phrase_code"),
+            values.get("image_code"),
+        )
+        count = sum(x is not None for x in [picture_base64, phrase_code, image_code])
+        if count != 1:
+            raise ValidationError(
+                "picture_base64, phrase_code, and image_code must have exactly one provided"
+            )
+        return values
+
+
 @router.post("/maker")
-async def maker(request: Request):
-    data = await request.json()
-    words = data.get("wordsArea")
-    pass_code = data.get("passArea")
-    picture_url = data.get("picture")
-    phrase_code = data.get("phrase_code")
-
-    if not pass_code:
-        raise HTTPException(status_code=400, detail="Missing pass_code")
-
-    existing_entry = await find_one_by_pass(pass_code)
+async def maker(request_data: MakerRequest):
+    # pydantic 已验证数据，直接使用
+    existing_entry = await find_one_by_pass(request_data.pass_code)
     if existing_entry:
         return JSONResponse(content={"message": "请尝试其他PASS"}, status_code=400)
 
-    image_code = None
-    if picture_url:
+    image_code = request_data.image_code
+    if request_data.picture_base64 and not image_code:
         try:
-            with urlopen(picture_url) as response:
+            with urlopen(request_data.picture_base64) as response:
                 picture = response.read()
         except Exception:
             raise HTTPException(
                 status_code=400, detail="Invalid picture URL or unable to fetch"
             )
-
         _, image_code = get_image_code(picture)
 
-    if image_code:
-        # Use image_code and pass_code, store words
-        try:
+    try:
+        if image_code:
             await write_db(
-                image_code, words, pass_code, phrase_code=phrase_code, use_image=True
+                image_code,
+                request_data.words,
+                request_data.pass_code,
+                phrase_code=request_data.phrase_code,
+                use_image=True,
             )
-        except IntegrityError:
-            return JSONResponse(content={"message": "请尝试其他PASS"}, status_code=400)
-    else:
-        # No image_code, check phrase_code
-        if not phrase_code:
-            raise HTTPException(
-                status_code=400, detail="Missing phrase_code and image_code"
-            )
-
-        try:
+        else:
             await write_db(
-                [], words, pass_code, phrase_code=phrase_code, use_image=False
+                [],
+                request_data.words,
+                request_data.pass_code,
+                phrase_code=request_data.phrase_code,
+                use_image=False,
             )
-        except IntegrityError:
-            return JSONResponse(content={"message": "请尝试其他PASS"}, status_code=400)
+    except IntegrityError:
+        return JSONResponse(content={"message": "请尝试其他PASS"}, status_code=400)
 
-    return JSONResponse(content={"words": words}, status_code=200)
+    return JSONResponse(content={"words": request_data.words}, status_code=200)
