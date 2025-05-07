@@ -8,7 +8,7 @@ from app.services.db_service import (
     find_one_by_pass,
 )
 from tortoise.exceptions import IntegrityError
-from pydantic import ValidationError, model_validator
+from pydantic import model_validator
 
 router = APIRouter()
 
@@ -18,7 +18,7 @@ class MakerRequest(BaseModel):
     pass_code: str
     picture_base64: Optional[str] = None
     phrase_code: Optional[str] = None
-    image_code: Optional[List[int]] = None
+    image_code: Optional[List[List[int]]] = None
 
     @model_validator(mode="before")
     def check_exclusive_fields(cls, values):
@@ -29,7 +29,7 @@ class MakerRequest(BaseModel):
         )
         count = sum(x is not None for x in [picture_base64, phrase_code, image_code])
         if count != 1:
-            raise ValidationError(
+            raise ValueError(
                 "picture_base64, phrase_code, and image_code must have exactly one provided"
             )
         return values
@@ -37,6 +37,7 @@ class MakerRequest(BaseModel):
 
 @router.post("/maker")
 async def maker(request_data: MakerRequest):
+    print(request_data)
     existing_entry = await find_one_by_pass(request_data.pass_code)
     if existing_entry:
         return JSONResponse(content={"message": "请尝试其他PASS"}, status_code=400)
