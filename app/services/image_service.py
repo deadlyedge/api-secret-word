@@ -1,14 +1,21 @@
 import numpy as np
 import cv2
-from urllib.request import urlopen
 from app.config import SAMPLE_POINTS, MATCH_POINT
+import base64
 
 
-def get_image_code(image_file_code: bytes) -> tuple:
+def get_image_code(image_base64: str) -> tuple:
     """
     Use OpenCV ORB model to detect and compute the image code.
+    Accepts base64-encoded image string.
     """
-    img_array = np.frombuffer(image_file_code, np.uint8)
+
+    try:
+        image_bytes = base64.b64decode(image_base64)
+    except Exception:
+        return None, None
+
+    img_array = np.frombuffer(image_bytes, np.uint8)
     image_gray = cv2.imdecode(img_array, cv2.IMREAD_GRAYSCALE)
     orb = cv2.ORB.create(nfeatures=SAMPLE_POINTS)
     if image_gray is None:
