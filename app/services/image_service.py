@@ -1,7 +1,7 @@
+import base64
 import numpy as np
 import cv2
 from app.config import SAMPLE_POINTS, MATCH_POINT
-import base64
 
 
 def get_image_code(image_base64: str) -> tuple:

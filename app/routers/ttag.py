@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Request, HTTPException
 from starlette.responses import JSONResponse
-from app.services.db_service import (
+from app.services.database import (
     find_one_by_phrase_and_pass,
 )
 

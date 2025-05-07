@@ -1,9 +1,10 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from app.routers import maker, pass_check, ttag, vtag
 from fastapi.responses import JSONResponse
-from app.database import init_db
 from contextlib import asynccontextmanager
+
+from app.routers import maker, pass_check, ttag, vtag
+from app.services.database import init_db
 
 
 @asynccontextmanager

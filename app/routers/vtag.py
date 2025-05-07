@@ -2,7 +2,7 @@ from fastapi import APIRouter, Request
 from starlette.responses import JSONResponse
 from urllib.request import urlopen
 from json import loads
-from app.services.db_service import find_one_by_pass
+from app.services.database import find_one_by_pass
 from app.services.image_service import get_image_code, match_with_db
 
 router = APIRouter()

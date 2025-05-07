@@ -1,38 +1,15 @@
 from fastapi import APIRouter, HTTPException
-from starlette.responses import JSONResponse
-from pydantic import BaseModel
-from typing import Optional, List
+from fastapi.responses import JSONResponse
+from tortoise.exceptions import IntegrityError
+
+from app.model import MakerRequest
 from app.services.image_service import get_image_code
-from app.services.db_service import (
+from app.services.database import (
     write_db,
     find_one_by_pass,
 )
-from tortoise.exceptions import IntegrityError
-from pydantic import model_validator
 
 router = APIRouter()
-
-
-class MakerRequest(BaseModel):
-    words: str
-    pass_code: str
-    picture_base64: Optional[str] = None
-    phrase_code: Optional[str] = None
-    image_code: Optional[List[List[int]]] = None
-
-    @model_validator(mode="before")
-    def check_exclusive_fields(cls, values):
-        picture_base64, phrase_code, image_code = (
-            values.get("picture_base64"),
-            values.get("phrase_code"),
-            values.get("image_code"),
-        )
-        count = sum(x is not None for x in [picture_base64, phrase_code, image_code])
-        if count != 1:
-            raise ValueError(
-                "picture_base64, phrase_code, and image_code must have exactly one provided"
-            )
-        return values
 
 
 @router.post("/maker")

@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Request
 from starlette.responses import JSONResponse
-from app.services.db_service import find_one_by_pass
+from app.services.database import find_one_by_pass
 
 router = APIRouter()
 
