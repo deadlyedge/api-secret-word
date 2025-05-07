@@ -8,7 +8,6 @@ from typing import Optional
 from app.config import DATABASE_URL
 
 
-
 DATABASE_URL = DATABASE_URL  # Use the DATABASE_URL from config
 DATABASE_URL = DATABASE_URL.replace("postgresql://", "postgres://")
 
@@ -19,7 +18,9 @@ class SecretEntry(Model):
     words = fields.TextField()
     useImage = fields.BooleanField(default=False)
     phrase_code = fields.CharField(max_length=255, null=True)
-    image_code = fields.JSONField(null=True)  # Store serialized descriptors as JSON, allow null
+    image_code = fields.JSONField(
+        null=True
+    )  # Store serialized descriptors as JSON, allow null
     timestamp = fields.DatetimeField(auto_now_add=True)
 
     class Meta:
@@ -50,6 +51,7 @@ async def reset_db():
     # Recreate tables
     await Tortoise.generate_schemas()
 
+
 async def write_db(
     image_code,
     words: str,
@@ -64,7 +66,9 @@ async def write_db(
     image_code_json = json.dumps(image_code)
 
     # Validate phrase_code and image_code presence
-    if (not phrase_code or phrase_code.strip() == "") and (not image_code or image_code == []):
+    if (not phrase_code or phrase_code.strip() == "") and (
+        not image_code or image_code == []
+    ):
         raise ValueError("Either phrase_code or image_code must be provided")
 
     # If image_code is provided and not empty, set useImage to True
