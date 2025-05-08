@@ -14,7 +14,6 @@ router = APIRouter()
 
 @router.post("/maker")
 async def maker(request_data: MakerRequest):
-    print(request_data)
     existing_entry = await find_one_by_pass(request_data.pass_code)
     if existing_entry:
         return JSONResponse(content={"message": "请尝试其他PASS"}, status_code=400)

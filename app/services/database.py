@@ -28,7 +28,7 @@ class SecretEntry(Model):
 
 
 async def init_db():
-    await Tortoise.init(db_url=DATABASE_URL, modules={"models": ["app.database"]})
+    await Tortoise.init(db_url=DATABASE_URL, modules={"models": ["app.services.database"]})
     await Tortoise.generate_schemas()
 
 
@@ -38,7 +38,7 @@ async def close_db():
 
 async def reset_db():
     # Initialize database connection
-    await Tortoise.init(db_url=DATABASE_URL, modules={"models": ["app.database"]})
+    await Tortoise.init(db_url=DATABASE_URL, modules={"models": ["app.services.database"]})
     # Get all user tables
     conn = Tortoise.get_connection("default")
     tables = await conn.execute_query_dict(

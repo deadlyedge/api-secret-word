@@ -8,7 +8,7 @@ SAMPLE_POINTS = int(
     os.getenv("IMAGE_SAMPLE_POINTS", 500)
 )  # ORB feature points to detect
 MATCH_POINT = float(
-    os.getenv("IMAGE_MATCH_POINT", 0.75)
+    os.getenv("IMAGE_MATCH_POINT", 0.7)
 )  # Threshold for good match ratio
 
 # Database configuration

@@ -33,6 +33,22 @@ def match_with_db(code1: np.ndarray, code2: np.ndarray) -> bool:
     :param code2: np.ndarray
     :return: bool
     """
+    if code1 is None or code2 is None:
+        return False
+
+    # Convert descriptors to uint8 if needed
+    if code1.dtype != np.uint8:
+        code1 = code1.astype(np.uint8)
+    if code2.dtype != np.uint8:
+        code2 = code2.astype(np.uint8)
+
+    # Adjust descriptor columns to the minimum of both
+    min_cols = min(code1.shape[1], code2.shape[1])
+    if code1.shape[1] != min_cols:
+        code1 = code1[:, :min_cols]
+    if code2.shape[1] != min_cols:
+        code2 = code2[:, :min_cols]
+
     bf = cv2.BFMatcher(cv2.NORM_HAMMING)
     try:
         matches = bf.knnMatch(code1, code2, k=2)
@@ -45,5 +61,5 @@ def match_with_db(code1: np.ndarray, code2: np.ndarray) -> bool:
     if len(matches) == 0:
         return False
     similarity = len(good_match) / len(matches)
-    # print(f"Similarity: {similarity}")
+    print(f"Similarity: {similarity}")
     return similarity > MATCH_POINT
