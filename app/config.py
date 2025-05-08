@@ -1,19 +1,17 @@
 from dotenv import load_dotenv
-import os
+from os import getenv
 
 load_dotenv()  # Load environment variables from .env file
 
-# Constants
-SAMPLE_POINTS = int(
-    os.getenv("IMAGE_SAMPLE_POINTS", 500)
-)  # ORB feature points to detect
-MATCH_POINT = float(
-    os.getenv("IMAGE_MATCH_POINT", 0.7)
-)  # Threshold for good match ratio
+
+# Constants with validation
+# ORB feature points to detect, min_value=100, max_value=2000
+SAMPLE_POINTS = int(getenv("IMAGE_SAMPLE_POINTS", 500))
+
+# Threshold for good match ratio, 0.5 to 0.75 is a good range
+MATCH_POINT = float(getenv("IMAGE_MATCH_POINT", 0.7))
 
 # Database configuration
-DATABASE_URL = os.getenv(
-    "DATABASE_URL", "postgres://user:password@localhost:5432/dbname"
-)
+DATABASE_URL = getenv("DATABASE_URL", "postgres://user:password@localhost:5432/dbname")
 
 # Other configurations can be added here

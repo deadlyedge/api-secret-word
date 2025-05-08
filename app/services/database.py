@@ -1,4 +1,5 @@
 import json
+import zlib
 
 from tortoise import Tortoise, fields
 from tortoise.models import Model
@@ -18,9 +19,9 @@ class SecretEntry(Model):
     words = fields.TextField()
     useImage = fields.BooleanField(default=False)
     phrase_code = fields.CharField(max_length=255, null=True)
-    image_code = fields.JSONField(
+    image_code = fields.BinaryField(
         null=True
-    )  # Store serialized descriptors as JSON, allow null
+    )  # Store compressed serialized descriptors as binary, allow null
     timestamp = fields.DatetimeField(auto_now_add=True)
 
     class Meta:
@@ -62,8 +63,9 @@ async def write_db(
     """
     Insert a new record into the database.
     """
-    # Serialize image_code (descriptors) to JSON string for storage
-    image_code_json = json.dumps(image_code)
+    # Serialize image_code (descriptors) to JSON string, encode and compress for storage
+    raw = json.dumps(image_code).encode("utf-8")
+    compressed = zlib.compress(raw)
 
     # Validate phrase_code and image_code presence
     if (not phrase_code or phrase_code.strip() == "") and (
@@ -81,7 +83,7 @@ async def write_db(
             words=words,
             phrase_code=phrase_code,
             useImage=use_image,
-            image_code=image_code_json,
+            image_code=compressed,
         )
     except IntegrityError:
         raise

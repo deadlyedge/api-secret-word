@@ -1,13 +1,17 @@
-from fastapi import APIRouter, HTTPException
-from fastapi.responses import JSONResponse
-from tortoise.exceptions import IntegrityError
+from fastapi import APIRouter
 import asyncio
+from tortoise.exceptions import IntegrityError
 
 from app.model import MakerRequest
 from app.services.image_service import get_image_code
 from app.services.database import (
     write_db,
     find_one_by_pass,
+)
+from app.utils.response import (
+    json_response,
+    error_response,
+    validation_error_response,
 )
 
 router = APIRouter()
@@ -17,7 +21,7 @@ router = APIRouter()
 async def maker(request_data: MakerRequest):
     existing_entry = await find_one_by_pass(request_data.pass_code)
     if existing_entry:
-        return JSONResponse(content={"message": "请尝试其他PASS"}, status_code=400)
+        return error_response("请尝试其他PASS", http_status=400)
 
     image_code = request_data.image_code
     if request_data.picture_base64 and not image_code:
@@ -27,32 +31,22 @@ async def maker(request_data: MakerRequest):
                 None, get_image_code, request_data.picture_base64
             )
         except Exception:
-            raise HTTPException(
-                status_code=400,
-                detail="Invalid base64 picture data or unable to process",
-            )
+            return validation_error_response("Invalid base64 picture data or unable to process")
+
+    use_image = bool(image_code and image_code != [])
 
     try:
-        if image_code:
-            await write_db(
-                image_code,
-                request_data.words,
-                request_data.pass_code,
-                phrase_code=request_data.phrase_code,
-                use_image=True,
-            )
-        else:
-            await write_db(
-                [],
-                request_data.words,
-                request_data.pass_code,
-                phrase_code=request_data.phrase_code,
-                use_image=False,
-            )
+        await write_db(
+            image_code if use_image else None,
+            request_data.words,
+            request_data.pass_code,
+            phrase_code=request_data.phrase_code,
+            use_image=use_image,
+        )
     except IntegrityError:
-        return JSONResponse(content={"message": "请尝试其他PASS"}, status_code=400)
+        return error_response("请尝试其他PASS", http_status=400)
 
-    return JSONResponse(
-        content={"words": request_data.words, "pass_code": request_data.pass_code},
-        status_code=200,
+    return json_response(
+        data={"words": request_data.words, "pass_code": request_data.pass_code},
+        http_status=200,
     )
