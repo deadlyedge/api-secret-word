@@ -1,16 +1,13 @@
 import json
 import zlib
+from datetime import datetime
+from typing import Optional
 
 from tortoise import Tortoise, fields
 from tortoise.models import Model
 from tortoise.exceptions import IntegrityError
-from typing import Optional
 
 from app.config import DATABASE_URL
-
-
-DATABASE_URL = DATABASE_URL  # Use the DATABASE_URL from config
-DATABASE_URL = DATABASE_URL.replace("postgresql://", "postgres://")
 
 
 class SecretEntry(Model):
@@ -22,14 +19,18 @@ class SecretEntry(Model):
     image_code = fields.BinaryField(
         null=True
     )  # Store compressed serialized descriptors as binary, allow null
-    timestamp = fields.DatetimeField(auto_now_add=True)
+    created_at = fields.DatetimeField(auto_now_add=True)
+    viewed_at = fields.DatetimeField(null=True)
+    owner = fields.CharField(default="guest", max_length=255, null=True)
 
     class Meta:
         table = "secret_entries"
 
 
 async def init_db():
-    await Tortoise.init(db_url=DATABASE_URL, modules={"models": ["app.services.database"]})
+    await Tortoise.init(
+        db_url=DATABASE_URL, modules={"models": ["app.services.database"]}
+    )
     await Tortoise.generate_schemas()
 
 
@@ -39,7 +40,9 @@ async def close_db():
 
 async def reset_db():
     # Initialize database connection
-    await Tortoise.init(db_url=DATABASE_URL, modules={"models": ["app.services.database"]})
+    await Tortoise.init(
+        db_url=DATABASE_URL, modules={"models": ["app.services.database"]}
+    )
     # Get all user tables
     conn = Tortoise.get_connection("default")
     tables = await conn.execute_query_dict(
@@ -103,3 +106,10 @@ async def find_one_by_phrase_and_pass(phrase_code: str, pass_code: str):
     return await SecretEntry.filter(
         phrase_code__icontains=phrase_code, pass_code=pass_code
     ).first()
+
+
+async def update_viewed_at(pass_code: str):
+    """
+    Update the viewed_at timestamp for a given pass_code.
+    """
+    await SecretEntry.filter(pass_code=pass_code).update(viewed_at=datetime.now())

@@ -1,5 +1,6 @@
 from pydantic import model_validator, BaseModel
 from typing import Optional, List
+from datetime import datetime
 
 
 class CodeInput(BaseModel):
@@ -25,7 +26,23 @@ class CodeInput(BaseModel):
 class MakerRequest(CodeInput):
     words: str
     pass_code: str
+    owner: Optional[str] = "guest"
 
 
 class GetterRequest(CodeInput):
     pass_code: str
+
+
+class SecretEntryModel(BaseModel):
+    id: int
+    pass_code: str
+    words: str
+    useImage: bool = False
+    phrase_code: Optional[str] = None
+    image_code: Optional[bytes] = None
+    created_at: datetime
+    viewed_at: Optional[datetime] = None
+    owner: Optional[str] = "guest"
+
+    class Config:
+        orm_mode = True

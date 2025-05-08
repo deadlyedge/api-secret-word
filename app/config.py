@@ -12,6 +12,8 @@ SAMPLE_POINTS = int(getenv("IMAGE_SAMPLE_POINTS", 500))
 MATCH_POINT = float(getenv("IMAGE_MATCH_POINT", 0.7))
 
 # Database configuration
-DATABASE_URL = getenv("DATABASE_URL", "postgres://user:password@localhost:5432/dbname")
+DATABASE_URL = getenv(
+    "DATABASE_URL", "postgres://user:password@localhost:5432/dbname"
+).replace("postgresql://", "postgres://")
 
 # Other configurations can be added here
