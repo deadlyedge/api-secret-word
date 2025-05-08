@@ -61,5 +61,7 @@ def match_with_db(code1: np.ndarray, code2: np.ndarray) -> bool:
     if len(matches) == 0:
         return False
     similarity = len(good_match) / len(matches)
-    print(f"Similarity: {similarity}")
+    print(
+        f"Similarity: {similarity}, Match point: {MATCH_POINT}, Good match: {len(good_match)}, Matches: {len(matches)}"
+    )
     return similarity > MATCH_POINT

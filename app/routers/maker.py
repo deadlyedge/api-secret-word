@@ -1,6 +1,7 @@
 from fastapi import APIRouter, HTTPException
 from fastapi.responses import JSONResponse
 from tortoise.exceptions import IntegrityError
+import asyncio
 
 from app.model import MakerRequest
 from app.services.image_service import get_image_code
@@ -21,7 +22,10 @@ async def maker(request_data: MakerRequest):
     image_code = request_data.image_code
     if request_data.picture_base64 and not image_code:
         try:
-            _, image_code = get_image_code(request_data.picture_base64)
+            loop = asyncio.get_running_loop()
+            _, image_code = await loop.run_in_executor(
+                None, get_image_code, request_data.picture_base64
+            )
         except Exception:
             raise HTTPException(
                 status_code=400,
