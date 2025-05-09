@@ -45,4 +45,4 @@ class SecretEntryModel(BaseModel):
     owner: Optional[str] = "guest"
 
     class Config:
-        orm_mode = True
+        from_attributes = True

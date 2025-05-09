@@ -1,7 +1,7 @@
 from fastapi import APIRouter
 import numpy as np
 from app.model import GetterRequest
-from app.services.database import find_one_by_pass
+from app.services.database import find_one_by_pass, update_viewed_at
 from app.services.image_service import deserialize_code, match_with_db
 import asyncio
 from app.utils.response import (
@@ -34,6 +34,7 @@ async def vtag(request_data: GetterRequest):
 
     if matched:
         print(f"{request_data.pass_code} matched! and the words are {read_back.words}")
+        await update_viewed_at(request_data.pass_code)
         return json_response(data={"words": read_back.words})
     else:
-        return not_found_response("NOT FOUND")
+        return validation_error_response("NOT FOUND")
