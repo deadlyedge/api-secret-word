@@ -64,7 +64,7 @@ async def test_one_to_many_secrets_and_top5_verification():
             ),
         )
         res1 = await client.post("/api/v1/secrets", json=req1.model_dump())
-        assert res1.status_code == 201
+        assert res1.status_code == 201, f"Error: {res1.text}"
         assert res1.json()["credential_value"] == passcode
 
         # 录入第 2 条密语
@@ -81,7 +81,7 @@ async def test_one_to_many_secrets_and_top5_verification():
             ),
         )
         res2 = await client.post("/api/v1/secrets", json=req2.model_dump())
-        assert res2.status_code == 201
+        assert res2.status_code == 201, f"Error: {res2.text}"
 
         # 录入第 3 条密语
         req3 = SecretCreateRequest(
@@ -97,7 +97,7 @@ async def test_one_to_many_secrets_and_top5_verification():
             ),
         )
         res3 = await client.post("/api/v1/secrets", json=req3.model_dump())
-        assert res3.status_code == 201
+        assert res3.status_code == 201, f"Error: {res3.text}"
 
         # 3. 验证：持 pattern 1 特征进行比对检索
         verify_req1 = VerifyRequest(
@@ -112,7 +112,7 @@ async def test_one_to_many_secrets_and_top5_verification():
             min_score=0.60,
         )
         v_res1 = await client.post("/api/v1/verify", json=verify_req1.model_dump())
-        assert v_res1.status_code == 200
+        assert v_res1.status_code == 200, f"Error: {v_res1.text}"
         v_data1 = v_res1.json()
         assert v_data1["matched"] is True
         assert v_data1["count"] >= 1
@@ -135,7 +135,7 @@ async def test_one_to_many_secrets_and_top5_verification():
         v_res_none = await client.post(
             "/api/v1/verify", json=verify_req_none.model_dump()
         )
-        assert v_res_none.status_code == 200
+        assert v_res_none.status_code == 200, f"Error: {v_res_none.text}"
         assert v_res_none.json()["matched"] is False
         assert v_res_none.json()["count"] == 0
         assert len(v_res_none.json()["results"]) == 0

@@ -1,6 +1,7 @@
 from datetime import UTC, datetime
 
 from tortoise import Tortoise
+from tortoise.exceptions import ConfigurationError
 
 from app.config import DATABASE_URL
 from app.domain.models.secret_entry import SecretEntry
@@ -8,21 +9,29 @@ from app.domain.schemas.evidence import VisualEvidence
 
 
 async def init_db():
-    """初始化数据库连接并生成表结构"""
-    await Tortoise.init(
-        db_url=DATABASE_URL,
-        modules={"models": ["app.domain.models.secret_entry"]},
-    )
-    await Tortoise.generate_schemas()
+    """初始化数据库连接并确保表结构存在"""
+    try:
+        Tortoise.get_connection("default")
+    except ConfigurationError:
+        await Tortoise.init(
+            db_url=DATABASE_URL,
+            modules={"models": ["app.domain.models.secret_entry"]},
+        )
+    await Tortoise.generate_schemas(safe=True)
 
 
 async def close_db():
     """关闭数据库连接"""
-    await Tortoise.close_connections()
+    try:
+        if Tortoise._inited:
+            await Tortoise.close_connections()
+    except ConfigurationError:
+        pass
 
 
 async def reset_db():
     """重置数据库（删除所有表并重新创建）"""
+    await close_db()
     await Tortoise.init(
         db_url=DATABASE_URL,
         modules={"models": ["app.domain.models.secret_entry"]},
@@ -34,7 +43,7 @@ async def reset_db():
     for table in tables:
         table_name = table["tablename"]
         await conn.execute_script(f'DROP TABLE IF EXISTS "{table_name}" CASCADE;')
-    await Tortoise.generate_schemas()
+    await Tortoise.generate_schemas(safe=True)
 
 
 async def find_candidates_by_credential(credential_value: str) -> list[SecretEntry]:

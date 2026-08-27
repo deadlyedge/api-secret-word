@@ -10,10 +10,8 @@ from app.services.database import close_db, init_db
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # 初始化数据库连接和表结构
     await init_db()
     yield
-    # 关闭数据库连接
     await close_db()
 
 
@@ -39,7 +37,9 @@ app.include_router(api_router)
 
 @app.get("/health", tags=["Health"])
 async def health():
-    return JSONResponse({"status": "ok", "service": "api-secret-word"}, status_code=200)
+    return JSONResponse(
+        {"status": "ok", "service": "api-secret-word"}, status_code=200
+    )
 
 
 if __name__ == "__main__":
