@@ -6,26 +6,26 @@
 
 ## 1. 核心架构与设计原则
 
-1. **废弃手动 passcode 输入，以图像凭证为索引**：
-   - 系统核心是基于“从图像中读取证据（二维码 `qr`、条形码 `barcode`、OCR 文本 `ocr`、复合凭证 `composite`）”作为身份认证索引 `credential_value`。
-   - 禁止引入需要用户在前端输入框输入 `passcode` 的旧版设计。
-   - 识别二维码支持强制 HTTPS API 接口模式（如 `https://<host>/api/v1`），调用仅返回纯文本凭证用于后续去中心化校验。
+1. **凭证索引与一对多特征库检索**：
+   - 系统的核心价值在于将一个视觉形象（图像特征）关联到一个凭证标记（`passcode` / `credential_value`），并在服务端建立一对多的特征索引库，实现去中心化或轻量化的视觉密语验证与检索。
+   - 前端优先通过相机画面自动识别凭证（二维码 `qr`、条形码 `barcode`）或语音识别提取 `passcode`，手动输入框作为备选项。
+   - 后端根据前端发来的 `passcode`（`credential_value`），在数据库中检索出**所有符合该 passcode 的候选特征库条目（支持一对多，单个 passcode 可对应多个已存密语/特征）**。
 2. **保留 ORB 核心高精度匹配，构建多算法扩展体系**：
    - 保留 OpenCV (`cv2.ORB_create`, `cv2.BFMatcher` / `FLANN`) 作为核心高精度局部特征比对方案，保证尺度与旋转不变性及抗噪识别率。
    - 将 ORB 特征与匹配逻辑解耦封装为标准的 Matcher 策略模式。
+   - 提取各候选条目的特征描述子与前端提交特征逐一精配，计算相似度评分（`score`，0.0~1.0）。
    - 提供通用算法扩展接口（`BaseMatcher` / `FeatureExtractor`），支持插拔接入感知哈希（pHash / dHash / aHash）等算法，用于大候选集快速粗筛或多维度辅助打分。
-3. **统一命名与数据契约**：
+3. **决策引擎与 Top-5 结果过滤返回**：
+   - 比对完成后，按阈值过滤（如 `score >= min_score` / `0.60`）；
+   - 将符合阈值的候选结果按 `score` 降序排列，**截取并返回高于阈值的前 5 个结果（Top-5）**以及对应关联的密语内容；
+   - 若无可达标项，返回不匹配响应。
+4. **统一命名与数据契约**：
    - 彻底淘汰 `passArea`、`pass_code`、`phrase_code` 等历史混乱字段。
    - 统一使用 `credential_type`、`credential_value`、`algorithm`、`feature_data`、`keypoints_count`、`score`。
-4. **分层验证与匹配决策策略**：
-   - 第一层（凭证检索层）：基于 `credential_value` 精确索引或过滤候选密语条目。
-   - 辅助粗筛层（可选）：当候选集庞大时，使用轻量哈希（pHash/dHash）快速初筛过滤。
-   - 第二层（ORB 核心特征精配层）：利用 `cv2.BFMatcher(cv2.NORM_HAMMING, crossCheck=True)` 或基于 Lowe's ratio test 的 KNN 匹配计算 Good Matches 比例与距离评分。
-   - 判定标准：凭证匹配一致且 ORB 特征相似度达标（或多层组合校验通过）方可判定验证成功。
 5. **分层清晰的后端工程结构**：
-   - `api/`: 接口路由、依赖注入、参数校验与标准响应封装。
+   - `api/` 或 `routers/`: 接口路由、依赖注入、参数校验与标准响应封装。
    - `domain/`: 数据库实体模型 (`models/`) 与 Pydantic 契约 (`schemas/`)。
-   - `services/`: 凭证解析（`credential_service.py`）、算法匹配策略（`matchers/`）、综合决策引擎（`match_engine.py`）。
+   - `services/`: 数据库服务（`database.py`）、算法匹配策略（`matchers/`）、综合决策引擎（`match_engine.py`）。
    - `infra/`: 数据库连接、安全控制与审计日志。
 
 ---
@@ -78,56 +78,63 @@ uv run mypy app                                  # 类型检查
 
 ```python
 from datetime import datetime
-from typing import Dict, Literal, Optional
+from typing import Dict, List, Literal, Optional
 from pydantic import BaseModel, Field
 
 AlgorithmType = Literal["orb", "phash", "dhash", "ahash", "histogram"]
 CredentialType = Literal["qr", "barcode", "ocr", "composite"]
 
 class VisualEvidence(BaseModel):
-    credential_type: CredentialType = Field(..., description="凭证类型")
-    credential_value: str = Field(..., description="识别出的凭证值（用于索引）")
-    algorithm: AlgorithmType = Field(default="orb", description="核心特征匹配算法")
-    feature_data: str = Field(..., description="ORB 描述子序列化数据（Base64/Buffer）或哈希值")
+    credential_type: CredentialType = Field(..., description="凭证类型 (qr/barcode)")
+    credential_value: str = Field(..., description="识别出的凭证值/passcode")
+    algorithm: AlgorithmType = Field(default="orb", description="核心特征提取算法")
+    feature_data: str = Field(..., description="Base64 编码的描述子二进制矩阵")
     keypoints_count: Optional[int] = Field(None, description="关键点数量")
-    width: int = Field(..., description="图像标准化宽度")
-    height: int = Field(..., description="图像标准化高度")
-    score: Optional[float] = Field(None, description="置信度或匹配评分")
-    created_at: datetime = Field(default_factory=datetime.utcnow, description="生成时间戳")
-    extra_features: Optional[Dict[str, str]] = Field(None, description="扩展算法特征")
+    width: int = Field(..., description="标准化宽度")
+    height: int = Field(..., description="标准化高度")
+    extra_features: Optional[Dict[str, str]] = Field(None, description="可选辅助哈希特征")
 
 class VerifyRequest(BaseModel):
-    evidence: VisualEvidence = Field(..., description="前端识别并提取的视觉证据与特征")
+    evidence: VisualEvidence = Field(..., description="前端预处理并提取的凭证与特征")
+    min_score: Optional[float] = Field(default=0.60, description="最低有效匹配阈值 (0.0~1.0)")
+
+class MatchItem(BaseModel):
+    id: str = Field(..., description="密语记录 ID")
+    title: Optional[str] = Field(None, description="密语标题/描述")
+    score: float = Field(..., description="匹配相似度得分 (0.0~1.0)")
+    secret_text: Optional[str] = Field(None, description="关联的解密内容")
+    created_at: datetime = Field(..., description="创建时间")
 
 class VerifyResponse(BaseModel):
-    matched: bool = Field(..., description="是否匹配成功")
-    confidence: float = Field(..., description="综合匹配度得分 0.0 ~ 1.0")
-    secret_text: Optional[str] = Field(None, description="匹配成功后解密返回的秘密内容")
+    matched: bool = Field(..., description="是否存在达标匹配项")
+    count: int = Field(..., description="命中数量 (<= 5)")
+    results: List[MatchItem] = Field(default_factory=list, description="匹配度高于阈值的前五结果（按 score 降序）")
     message: str = Field(..., description="结果描述信息")
 
 class SecretCreateRequest(BaseModel):
     title: Optional[str] = Field(None, description="密语标题/备注")
-    secret_text: str = Field(..., description="要加密存储的秘密内容")
-    evidence: VisualEvidence = Field(..., description="绑定的视觉凭证与特征")
+    secret_text: str = Field(..., description="密语内容")
+    evidence: VisualEvidence = Field(..., description="绑定的凭证与特征")
 ```
 
 ---
 
 ## 5. 编码实施重点任务清单
 
-1. **统一数据库模型与迁移** (`app/domain/models/secret_entry.py`):
-   - 创建 `SecretEntry` 表，字段包含 `id`, `credential_type`, `credential_value`, `algorithm`, `feature_data`, `keypoints_count`, `secret_data`, `extra_features`, `created_at` 等，并对 `credential_value` 建立高效索引。
+1. **统一数据库模型与迁移** (`app/domain/models/secret_entry.py` / `app/services/database.py`):
+   - 创建/改造 `SecretEntry` 表，字段包含 `id`, `credential_type`, `credential_value`, `algorithm`, `feature_data`, `keypoints_count`, `secret_text`, `extra_features`, `created_at` 等。
+   - **注意**：`credential_value` 为普通非唯一索引（`index=True`），支持一对多存储。
 2. **ORB 描述子序列化与特征匹配器** (`app/services/matchers/orb.py`):
-   - 实现前端 Base64 描述子到 NumPy `uint8` 矩阵的还原。
-   - 使用 `cv2.BFMatcher` 实现对输入特征与库内特征的快速比对，输出好匹配点比例与置信度。
+   - 实现前端 Base64 描述子到 NumPy `uint8` 矩阵的还原 `(N, 32)`。
+   - 使用 `cv2.BFMatcher(cv2.NORM_HAMMING)` 执行 KNN (`k=2`) 匹配与 Lowe's ratio test (ratio <= 0.75) 计算 Good Matches 匹配度得分。
 3. **多算法扩展接口与粗筛** (`app/services/matchers/`):
    - 定义 `BaseMatcher` 抽象基类。
    - 实现可选的哈希匹配器（汉明距离比对），为未来扩展及多维校验提供插件化支持。
 4. **决策匹配引擎** (`app/services/match_engine.py`):
-   - 步骤一：按 `credential_value` 检索候选记录；
-   - 步骤二：若有多条候选且配置了扩展哈希，先用轻量哈希做快速初筛；
-   - 步骤三：执行 ORB 精确比对，计算匹配得分；
-   - 步骤四：得分超过判定阈值（如 confidence >= 0.75）则返回对应的 `secret_data`。
+   - 步骤一：按 `credential_value` (passcode) 检索数据库中全部候选记录（可能存在多条）；
+   - 步骤二：逐一比对候选特征与前端提交的特征，计算匹配得分；
+   - 步骤三：过滤 `score >= min_score`（如 0.60），并按得分从高到低降序排序；
+   - 步骤四：截取 Top-5 匹配项，组装 `VerifyResponse` 并返回。
 5. **安全控制与传输规范**:
    - 配置严格的 CORS 白名单；
    - 接口调用限流防刷（Rate Limiting）；
@@ -141,9 +148,8 @@ class SecretCreateRequest(BaseModel):
 - **Web 框架**: FastAPI + Uvicorn
 - **数据验证与序列化**: Pydantic v2
 - **图像处理与算法库**: 
-  - OpenCV-Python (`opencv-python` / `cv2`，ORB 特征提取与匹配)
+  - OpenCV-Python (`opencv-python-headless` / `cv2`，ORB 特征提取与匹配)
   - Pillow / imagehash (辅助图像哈希扩展)
   - NumPy (数值计算与描述子矩阵处理)
-  - pyzbar / pytesseract / easyocr (服务端辅助凭证识别)
 - **数据库**: tortoise-orm[asyncpg] (支持 PostgreSQL)
 - **代码规范**: Ruff
