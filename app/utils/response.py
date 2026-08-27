@@ -1,5 +1,5 @@
-from fastapi.responses import JSONResponse
 from fastapi import status
+from fastapi.responses import JSONResponse
 
 
 def json_response(data=None, message="", code=0, http_status=status.HTTP_200_OK):
@@ -28,8 +28,12 @@ def error_response(message, code=1, http_status=status.HTTP_400_BAD_REQUEST):
 
 
 def not_found_response(message="Not Found", code=404):
-    return error_response(message=message, code=code, http_status=status.HTTP_404_NOT_FOUND)
+    return error_response(
+        message=message, code=code, http_status=status.HTTP_404_NOT_FOUND
+    )
 
 
 def validation_error_response(message="Validation Error", code=422):
-    return error_response(message=message, code=code, http_status=status.HTTP_422_UNPROCESSABLE_ENTITY)
+    return error_response(
+        message=message, code=code, http_status=status.HTTP_422_UNPROCESSABLE_ENTITY
+    )

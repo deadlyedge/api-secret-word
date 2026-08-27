@@ -1,16 +1,17 @@
-from fastapi import APIRouter
 import asyncio
+
+from fastapi import APIRouter
 from tortoise.exceptions import IntegrityError
 
 from app.model import MakerRequest
-from app.services.image_service import get_image_code
 from app.services.database import (
-    write_db,
     find_one_by_pass,
+    write_db,
 )
+from app.services.image_service import get_image_code
 from app.utils.response import (
-    json_response,
     error_response,
+    json_response,
     validation_error_response,
 )
 
@@ -31,7 +32,9 @@ async def maker(request_data: MakerRequest):
                 None, get_image_code, request_data.picture_base64
             )
         except Exception:
-            return validation_error_response("Invalid base64 picture data or unable to process")
+            return validation_error_response(
+                "Invalid base64 picture data or unable to process"
+            )
 
     use_image = bool(image_code and image_code != [])
 

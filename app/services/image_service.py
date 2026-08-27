@@ -1,9 +1,11 @@
 import base64
-import numpy as np
-import cv2
 import json
 import zlib
-from app.config import SAMPLE_POINTS, MATCH_POINT
+
+import cv2
+import numpy as np
+
+from app.config import MATCH_POINT, SAMPLE_POINTS
 
 
 def get_image_code(image_base64: str) -> tuple:

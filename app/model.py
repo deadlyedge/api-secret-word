@@ -1,12 +1,12 @@
-from pydantic import model_validator, BaseModel
-from typing import Optional, List
 from datetime import datetime
+
+from pydantic import BaseModel, model_validator
 
 
 class CodeInput(BaseModel):
-    picture_base64: Optional[str] = None
-    phrase_code: Optional[str] = None
-    image_code: Optional[List[List[int]]] = None
+    picture_base64: str | None = None
+    phrase_code: str | None = None
+    image_code: list[list[int]] | None = None
 
     @model_validator(mode="before")
     def check_exclusive_fields(cls, values):
@@ -26,7 +26,7 @@ class CodeInput(BaseModel):
 class MakerRequest(CodeInput):
     words: str
     pass_code: str
-    owner: Optional[str] = "guest"
+    owner: str | None = "guest"
 
 
 class GetterRequest(CodeInput):
@@ -38,11 +38,11 @@ class SecretEntryModel(BaseModel):
     pass_code: str
     words: str
     useImage: bool = False
-    phrase_code: Optional[str] = None
-    image_code: Optional[bytes] = None
+    phrase_code: str | None = None
+    image_code: bytes | None = None
     created_at: datetime
-    viewed_at: Optional[datetime] = None
-    owner: Optional[str] = "guest"
+    viewed_at: datetime | None = None
+    owner: str | None = "guest"
 
     class Config:
         from_attributes = True

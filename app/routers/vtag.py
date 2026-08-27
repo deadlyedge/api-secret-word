@@ -1,12 +1,14 @@
-from fastapi import APIRouter
+import asyncio
+
 import numpy as np
+from fastapi import APIRouter
+
 from app.model import GetterRequest
 from app.services.database import find_one_by_pass, update_viewed_at
 from app.services.image_service import deserialize_code, match_with_db
-import asyncio
 from app.utils.response import (
-    json_response,
     error_response,
+    json_response,
     not_found_response,
     validation_error_response,
 )
@@ -27,7 +29,7 @@ async def vtag(request_data: GetterRequest):
         read_code = np.asarray(deserialize_code(read_back.image_code))
         incoming_code = np.asarray(request_data.image_code)
     except Exception as e:
-        return error_response(f"数据格式错误: {str(e)}", http_status=500)
+        return error_response(f"数据格式错误: {e!s}", http_status=500)
 
     loop = asyncio.get_running_loop()
     matched = await loop.run_in_executor(None, match_with_db, read_code, incoming_code)
