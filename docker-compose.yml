@@ -1,0 +1,16 @@
+services:
+
+  api:
+    image: "xdream76/api-secret-word"
+    container_name: "api-secret-word"
+    restart: unless-stopped
+    ports:
+      - "8021:8001"
+    volumes:
+      - /etc/localtime:/etc/localtime:ro
+    env_file:
+      - .env
+    environment:
+      TZ: 'Asia/Hong_Kong'
+    healthcheck:
+      test: [ "CMD", "curl", "-f", "https://api.my.jiaoz.net/health" ]
