@@ -1,4 +1,5 @@
 from datetime import datetime
+from uuid import UUID
 
 from pydantic import BaseModel, Field
 
@@ -27,8 +28,7 @@ class VerifyRequest(BaseModel):
 
 
 class MatchItem(BaseModel):
-    id: int = Field(..., description="密语记录 ID")
-    title: str | None = Field(None, description="密语标题/描述")
+    id: UUID = Field(..., description="密语记录 UUIDv7")
     score: float = Field(..., description="匹配相似度得分 (0.0~1.0)")
     secret_text: str | None = Field(None, description="关联的解密内容")
     created_at: datetime = Field(..., description="创建时间")
@@ -38,12 +38,12 @@ class VerifyResponse(BaseModel):
     matched: bool = Field(..., description="是否存在达标匹配项")
     count: int = Field(..., description="命中数量 (<= 5)")
     results: list[MatchItem] = Field(
-        default_factory=list, description="匹配度高于阈值的前五结果（按 score 降序）"
+        default_factory=list,
+        description="匹配度高于阈值的前五结果（按 score 降序）",
     )
     message: str = Field(..., description="结果描述信息")
 
 
 class SecretCreateRequest(BaseModel):
-    title: str | None = Field(None, description="密语标题/备注")
     secret_text: str = Field(..., description="密语内容")
     evidence: VisualEvidence = Field(..., description="绑定的凭证与特征")

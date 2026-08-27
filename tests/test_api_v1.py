@@ -52,7 +52,6 @@ async def test_one_to_many_secrets_and_top5_verification():
 
         # 录入第 1 条密语
         req1 = SecretCreateRequest(
-            title="老地方见",
             secret_text="明天下午三点老地方见",
             evidence=VisualEvidence(
                 credential_type="qr",
@@ -65,11 +64,12 @@ async def test_one_to_many_secrets_and_top5_verification():
         )
         res1 = await client.post("/api/v1/secrets", json=req1.model_dump())
         assert res1.status_code == 201, f"Error: {res1.text}"
-        assert res1.json()["credential_value"] == passcode
+        data1 = res1.json()
+        assert data1["credential_value"] == passcode
+        assert "id" in data1  # UUIDv7 字符串
 
         # 录入第 2 条密语
         req2 = SecretCreateRequest(
-            title="备用钥匙",
             secret_text="钥匙在花盆底下",
             evidence=VisualEvidence(
                 credential_type="qr",
@@ -85,7 +85,6 @@ async def test_one_to_many_secrets_and_top5_verification():
 
         # 录入第 3 条密语
         req3 = SecretCreateRequest(
-            title="秘密会议",
             secret_text="会议室代码 8899",
             evidence=VisualEvidence(
                 credential_type="qr",
@@ -119,6 +118,7 @@ async def test_one_to_many_secrets_and_top5_verification():
         # 最佳匹配项 (Top-1) 应是“老地方见”
         assert v_data1["results"][0]["secret_text"] == "明天下午三点老地方见"
         assert v_data1["results"][0]["score"] >= 0.70
+        assert "id" in v_data1["results"][0]  # 匹配项中包含 UUIDv7 ID
 
         # 4. 验证：不存在的 passcode
         verify_req_none = VerifyRequest(

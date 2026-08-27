@@ -1,10 +1,12 @@
+import uuid6
 from tortoise import fields
 from tortoise.models import Model
 
 
 class SecretEntry(Model):
-    id = fields.IntField(primary_key=True)
-    title = fields.CharField(max_length=255, null=True)
+    id = fields.UUIDField(
+        primary_key=True, default=uuid6.uuid7
+    )  # UUIDv7 主键，在 PG17/18 及所有版本中高效索引
     credential_type = fields.CharField(max_length=64, default="qr")
     credential_value = fields.CharField(
         max_length=255, db_index=True

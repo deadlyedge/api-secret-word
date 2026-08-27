@@ -1,6 +1,8 @@
 from datetime import UTC, datetime
+from uuid import UUID
 
-from tortoise import Tortoise
+import uuid6
+from tortoise import Tortoise, connections
 from tortoise.exceptions import ConfigurationError
 
 from app.config import DATABASE_URL
@@ -22,11 +24,11 @@ async def init_db():
 
 async def close_db():
     """关闭数据库连接"""
-    try:
-        if Tortoise._inited:
+    if connections._db_config:
+        try:
             await Tortoise.close_connections()
-    except ConfigurationError:
-        pass
+        except ConfigurationError:
+            pass
 
 
 async def reset_db():
@@ -56,13 +58,12 @@ async def find_candidates_by_credential(credential_value: str) -> list[SecretEnt
 async def create_secret_entry(
     secret_text: str,
     evidence: VisualEvidence,
-    title: str | None = None,
 ) -> SecretEntry:
     """
-    创建并持久化一条新的密语与视觉特征记录
+    创建并持久化一条新的密语与视觉特征记录，主键使用 UUIDv7
     """
     entry = await SecretEntry.create(
-        title=title,
+        id=uuid6.uuid7(),
         credential_type=evidence.credential_type,
         credential_value=evidence.credential_value,
         algorithm=evidence.algorithm,
@@ -74,7 +75,7 @@ async def create_secret_entry(
     return entry
 
 
-async def update_viewed_at(entry_ids: list[int]):
+async def update_viewed_at(entry_ids: list[UUID]):
     """
     批量更新命中的条目的查看时间戳
     """

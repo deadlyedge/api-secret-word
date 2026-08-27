@@ -37,9 +37,7 @@ app.include_router(api_router)
 
 @app.get("/health", tags=["Health"])
 async def health():
-    return JSONResponse(
-        {"status": "ok", "service": "api-secret-word"}, status_code=200
-    )
+    return JSONResponse({"status": "ok", "service": "api-secret-word"}, status_code=200)
 
 
 if __name__ == "__main__":

@@ -1,3 +1,5 @@
+from uuid import UUID
+
 from fastapi import APIRouter, HTTPException, status
 from pydantic import BaseModel
 
@@ -8,8 +10,7 @@ router = APIRouter(tags=["Secrets"])
 
 
 class SecretCreateResponse(BaseModel):
-    id: int
-    title: str | None = None
+    id: UUID
     credential_value: str
     message: str
 
@@ -23,17 +24,15 @@ class SecretCreateResponse(BaseModel):
 async def create_secret(request: SecretCreateRequest) -> SecretCreateResponse:
     """
     录入一条新的密语并绑定对应的凭证（passcode）与图像特征描述子。
-    支持同一个 passcode 绑定多个不同的视觉形象及密语内容（一对多）。
+    主键自动生成标准 UUIDv7，支持同一个 passcode 绑定多个不同的视觉形象及密语内容（一对多）。
     """
     try:
         entry = await create_secret_entry(
-            title=request.title,
             secret_text=request.secret_text,
             evidence=request.evidence,
         )
         return SecretCreateResponse(
             id=entry.id,
-            title=entry.title,
             credential_value=entry.credential_value,
             message="密语与视觉特征已成功录入",
         )

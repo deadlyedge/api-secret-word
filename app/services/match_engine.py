@@ -52,7 +52,6 @@ class MatchEngine:
                 matched_items.append(
                     MatchItem(
                         id=cand.id,
-                        title=cand.title,
                         score=round(score, 4),
                         secret_text=cand.secret_text,
                         created_at=cand.created_at,
